@@ -15,7 +15,7 @@ def run_style_transfer_pipeline(args):
     dataset = COD10KDataset(pos_data_paths)
     dataloader = DataLoader(dataset, batch_size = args.batch_size)
     
-    for i_batch, batch in tqdm(enumerate(dataloader)):
+    for i_batch, batch in enumerate(dataloader):
         style_transfer(batch['img'],
             (1, 2, 3, 4),
             3,

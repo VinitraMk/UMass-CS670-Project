@@ -47,7 +47,7 @@ def __get_features(img, model_features):
         
     return features
 
-def __get_transforms(size = 256):
+def __get_transforms(size = 128):
     transform = transforms.Compose([
         transforms.Resize(size),
         transforms.ToTensor(),
