@@ -1,5 +1,8 @@
 from torch.utils.data import Dataset
 from skimage import io
+import numpy as np
+from torchvision.io import read_image
+import torch
 
 class COD10KDataset(Dataset):
     
@@ -11,8 +14,8 @@ class COD10KDataset(Dataset):
         return self.length
     
     def __getitem__(self, idx):
-        img_tensor = io.imread(self.data_paths[idx]['image_path'])
-        mask_tensor = io.imread(self.data_paths[idx]['mask_path'])
+        img_tensor = read_image(self.data_paths[idx]['image_path']).type(torch.FloatTensor)
+        mask_tensor = read_image(self.data_paths[idx]['mask_path']).type(torch.FloatTensor)
         label = self.data_paths[idx]['camouflaged']
         
         sample = {

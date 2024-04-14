@@ -1,13 +1,9 @@
-# this file is to read data folder
-# and get information such as length, x and y
-
 def read_data(type = 'Train', get_neg = False):
-    image_path = f'data/{type}/Image'
-    mask_path = f'data/{type}/GT_Object'
-    edge_path = f'data/{type}/GT_Edge'
-    pos_info_path = f'data/Info/CAM_{type.lower()}.txt'
-    neg_info_path = f'data/Info/NonCAM_{type.lower()}.txt'
-    #info_test_path = f'data/Info/CAM_test.txt'
+    image_path = f'data/COD10K-v3/{type}/Image'
+    mask_path = f'data/COD10K-v3/{type}/GT_Object'
+    edge_path = f'data/COD10K-v3/{type}/GT_Edge'
+    pos_info_path = f'data/COD10K-v3/Info/CAM_{type.lower()}.txt'
+    neg_info_path = f'data/COD10K-v3/Info/NonCAM_{type.lower()}.txt'
     
     with open(pos_info_path, 'r') as fp:
         pos_data_info = fp.readlines()
@@ -36,4 +32,5 @@ def read_data(type = 'Train', get_neg = False):
             )
     
     return data_paths
+        
         

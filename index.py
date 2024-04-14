@@ -17,15 +17,15 @@ def run_style_transfer_pipeline(args):
     
     for i_batch, batch in enumerate(dataloader):
         style_transfer(batch['img'],
-            (1, 2, 3, 4),
+            (1, 4, 6, 7),
             3,
-            0.01,
-            (500, 200, 10, 1),
-            0.01,
+            6e-2,
+            (2000, 512, 12, 1),
+            6e-2,
             args)
         if i_batch == 0:
             break
-    
+       
     
 if __name__ == "__main__":
     
