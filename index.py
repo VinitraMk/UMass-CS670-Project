@@ -12,7 +12,11 @@ from experiments.style_transfer import style_transfer
 try:
     from experiments.synthetic import run_synthetic_pipeline
 except ModuleNotFoundError:
-    warnings.warn("Unable to import synthetic data generation! Check package diffusers")
+    warnings.warn("Unable to import synthetic data generation! Check package diffusers if using this")
+try:
+    from experiments.sam_baseline import run_sam_pipeline
+except ModuleNotFoundError:
+    warnings.warn("Unable to import sam baseline! Check package groundingdino and segment_anything if using this")
 
 def run_style_transfer_pipeline(args):
     pos_data_paths = read_data('Train')
@@ -56,4 +60,6 @@ if __name__ == "__main__":
         run_style_transfer_pipeline(args)
     elif args.mode == "synthetic":
         run_synthetic_pipeline(args)
+    elif args.mode == "sam":
+        run_sam_pipeline(args)
     
