@@ -66,11 +66,11 @@ class ExampleApp(Frame):
         width, height = self.im.size
         old_width, old_height = self.im.size
         if width > WIDTH:
-            width = WIDTH
             height = height * (WIDTH/width)
+            width = WIDTH
         if height > HEIGHT:
-            height = HEIGHT
             width = width * (HEIGHT/height)
+            height = HEIGHT
         width = int(width)
         height = int(height)
         self.im = self.im.resize((width, height))
@@ -193,7 +193,6 @@ class ExampleApp(Frame):
             pred_y1 = pred_y1 / self.scale_h
             pred_y2 = pred_y2 / self.scale_h
 
-            print(pred_x1, pred_x2, gt_x1, gt_x2)
 
             x_left = max(gt_x1, pred_x1)
             y_top = max(pred_y1, pred_y1)
@@ -201,7 +200,6 @@ class ExampleApp(Frame):
             y_bottom = min(gt_y2, pred_y2)
 
             intersection_area = (x_right - x_left) * (y_bottom - y_top)
-            print(intersection_area, x_right, x_left, y_bottom, y_top)
             intersection_area = max(intersection_area, 0)
 
             # compute the area of both AABBs
