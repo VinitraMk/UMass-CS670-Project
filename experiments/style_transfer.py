@@ -66,8 +66,8 @@ def style_transfer(content_img, style_img, style_layers, content_layer, content_
     for param in model_features.parameters():
         param.requires_grad = False
 
-    #style_img = read_image('./data/Textures/tree-bark.jpg').type(dtype)
-    #content_img = read_image('./data/Mini-Set/butterfly-image.jpg').type(dtype)
+    style_img = style_img.type(dtype) #read_image('./data/Textures/tree-bark.jpg').type(dtype)
+    content_img = content_img.type(dtype) #read_image('./data/Mini-Set/butterfly-image.jpg').type(dtype)
     print('img sizes', style_img.size(), content_img.size())
     c_transform, c_inv_transform = get_transforms(args.content_size)
     content_img = c_transform(content_img)[None]

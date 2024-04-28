@@ -1,0 +1,10 @@
+                lr      epochs      style weights
+moss            0.05    100             0.1
+snow            0.05    200             1.5
+wet-and         0.05    200             3.5
+sand-with-moss  0.05    100             1.5
+rain            0.05    100             3.5
+wood            0.05    100             0.5
+grass           0.05    100             0.1            
+foliage-texture 0.05    100             0.1
+blue-coral      0.05    100             1.1
