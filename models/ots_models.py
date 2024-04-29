@@ -17,6 +17,13 @@ def get_model(model_name = "resnet18", get_weights = False):
             model_id2name = weights.meta["categories"]
         else:
             model = torchvision.models.inception_v3()
+    elif model_name.lower() == "vgg":
+        if get_weights:
+            weights = torchvision.models.VGG19_Weights.IMAGENET1K_V1
+            model = torchvision.models.vgg19(weights=weights)
+            model_id2name = weights.meta["categories"]
+        else:
+            model = torchvision.models.vgg19()
     elif model_name.lower() == "squeezenet":
         if get_weights:
             weights = torchvision.models.SqueezeNet1_1_Weights.IMAGENET1K_V1

@@ -4,6 +4,7 @@ import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 from skimage import io
 from torchvision.io import read_image
+from common.utils import convert_to_grascale, get_transforms
 
 def __get_gram_matrix(features):
     n,c,h,w = features.size()
@@ -48,35 +49,7 @@ def __get_features(img, model_features):
         
     return features
 
-def __get_transforms(size = 256):
-    transform = transforms.Compose([
-        transforms.CenterCrop(1000),
-        transforms.Resize(size),
-        transforms.Lambda(__rescale_img),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406],
-            std=[0.229, 0.224, 0.225])
-    ])
-    
-    inv_transform = transforms.Compose([
-        transforms.Lambda(lambda x: x[0]),
-        transforms.Normalize(mean = [ 0., 0., 0. ],
-        std = [ 1/0.229, 1/0.224, 1/0.225 ]),
-        transforms.Normalize(mean = [ -0.485, -0.456, -0.406 ],
-            std = [ 1., 1., 1. ]),
-        transforms.Lambda(__rescale_img),
-        transforms.ToPILImage(),
-        ])
-        
-    
-    
-    return transform, inv_transform
-
-def __rescale_img(img):
-    imin, imax = img.min(), img.max()
-    x = (img - imin) / (imax - imin)
-    return x
-    
-def style_transfer(content_img, style_layers, content_layer, content_weight, style_weights, tv_weight, args):
+def style_transfer(content_img, style_img, style_layers, content_layer, content_weight, style_weights, tv_weight, args):
 
     if torch.cuda.is_available():
         dtype = torch.cuda.FloatTensor
@@ -92,14 +65,17 @@ def style_transfer(content_img, style_layers, content_layer, content_weight, sty
     for param in model_features.parameters():
         param.requires_grad = False
 
-    style_img = read_image('./data/Textures/tree-bark.jpg').type(dtype)
-    content_img = read_image('./data/Mini-Set/butterfly-image.jpg').type(dtype)
-    c_transform, c_inv_transform = __get_transforms(args.content_size)
+    style_img = style_img.type(dtype)
+    content_img = content_img.type(dtype)
+
+    c_transform, c_inv_transform = get_transforms()
+    print('cs b4', content_img.shape)
     content_img = c_transform(content_img)[None]
+    print('cs after', content_img.shape)
     features = __get_features(content_img, model_features)
     content_trgt = features[content_layer].clone()
     
-    s_transform, _ = __get_transforms(args.style_size)
+    s_transform, _ = get_transforms()
     style_img = s_transform(style_img)[None]
     features = __get_features(style_img, model_features)
     style_grams = []
@@ -109,6 +85,7 @@ def style_transfer(content_img, style_layers, content_layer, content_weight, sty
 
     new_img = content_img.clone().type(dtype)
     new_img.requires_grad_(True)
+    print('ns', new_img.shape)
     optimizer = torch.optim.Adam([new_img], lr = args.lr)
 
     losses = []
@@ -124,7 +101,7 @@ def style_transfer(content_img, style_layers, content_layer, content_weight, sty
         closs = __content_loss(content_weight, features[content_layer], content_trgt)
         sloss = __style_loss(features, style_layers, style_grams, style_weights)
         tloss = __tv_loss(new_img, tv_weight)
-        loss = closs + sloss + tloss
+        loss = closs + (100* sloss) + tloss
         losses.append(loss.cpu().detach().numpy())
         closses.append(closs.cpu().detach().numpy())
         tlosses.append(tloss.cpu().detach().numpy())
@@ -133,14 +110,17 @@ def style_transfer(content_img, style_layers, content_layer, content_weight, sty
         loss.backward()
         optimizer.step()
         
+        '''
         if t % 100 == 0:
             print('Iteration {}'.format(t))
             plt.axis('off')
             rescaled_img = c_inv_transform(new_img.data.cpu())
             plt.imshow(rescaled_img)
             plt.show()
-            
+        '''
+    print('after trannsfer', new_img.size()) 
     rescaled_img = c_inv_transform(new_img.data.cpu())
+    '''
     print('Iteration {}'.format(t))
     plt.axis('off')
     plt.imshow(rescaled_img)
@@ -154,5 +134,7 @@ def style_transfer(content_img, style_layers, content_layer, content_weight, sty
     plt.plot(list(range(args.max_iter)), tlosses, color='y')
     plt.legend(['Total loss', 'Content loss', 'Style loss', 'Total variation loss'])
     plt.show()
+    '''
+    return rescaled_img
             
             

@@ -18,7 +18,8 @@ def read_data(type = 'Train', get_neg = False):
             {
                 "image_path": f"{image_path}/{infos[0]}",
                 "mask_path": (f"{mask_path}/{infos[0]}").replace("jpg", "png"),
-                "camouflaged": infos[1]
+                "camouflaged": infos[1],
+                "image_name": infos[0]
             }
         )
     if get_neg:
@@ -27,7 +28,8 @@ def read_data(type = 'Train', get_neg = False):
                 {
                     "image_path": f"{image_path}/{infos[0]}",
                     "mask_path": (f"{mask_path}/{infos[0]}").replace("jpg","png"),
-                    "camouflaged": infos[1]
+                    "camouflaged": infos[1],
+                    "image_name": infos[0]
                 }
             )
     
