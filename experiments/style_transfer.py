@@ -18,17 +18,17 @@ def __content_loss(content_weight, curr_content, orig_content):
     return content_weight * torch.sum((curr_content - orig_content)**2)
 
 def __style_loss(features, style_layers, style_grams, style_weights):
-    
+
     if torch.cuda.is_available():
         stloss = torch.tensor(0.0).to('cuda')
     else:
         stloss = torch.tensor(0.0)
-    
+
     for i in range(len(style_layers)):
         stlyr = features[style_layers[i]].clone()
         gm = __get_gram_matrix(stlyr)
         stloss += (style_weights[i] * torch.sum((style_grams[i] - gm)**2))
-    
+
     return stloss
 
 def __tv_loss(img, tv_weight):
@@ -41,12 +41,12 @@ def __tv_loss(img, tv_weight):
 def __get_features(img, model_features):
     features = []
     x = img
-    
+
     for _, layer in enumerate(model_features._modules.values()):
         op = layer(x)
         features.append(op)
         x = op
-        
+
     return features
 
 def style_transfer(content_img, style_img, style_layers, content_layer, content_weight, style_weights, tv_weight, args):
@@ -65,21 +65,20 @@ def style_transfer(content_img, style_img, style_layers, content_layer, content_
     for param in model_features.parameters():
         param.requires_grad = False
 
-    style_img = style_img.type(dtype)
-    content_img = content_img.type(dtype)
-
+    style_img = style_img.type(dtype) #read_image('./data/Textures/tree-bark.jpg').type(dtype)
+    content_img = content_img.type(dtype) #read_image('./data/Mini-Set/butterfly-image.jpg').type(dtype)
+    print('img sizes', style_img.size(), content_img.size())
     c_transform, c_inv_transform = get_transforms()
-    print('cs b4', content_img.shape)
     content_img = c_transform(content_img)[None]
     print('cs after', content_img.shape)
     features = __get_features(content_img, model_features)
     content_trgt = features[content_layer].clone()
-    
+
     s_transform, _ = get_transforms()
     style_img = s_transform(style_img)[None]
     features = __get_features(style_img, model_features)
     style_grams = []
-    
+
     for i in style_layers:
         style_grams.append(__get_gram_matrix(features[i].clone()))
 
@@ -92,7 +91,7 @@ def style_transfer(content_img, style_img, style_layers, content_layer, content_
     closses = []
     tlosses = []
     slosses = []
-    
+
     for t in range(args.max_iter):
         #if t < (args.max_iter - 10):
         new_img.data.clamp_(-1.5, 1.5)
@@ -114,15 +113,18 @@ def style_transfer(content_img, style_img, style_layers, content_layer, content_
         if t % 100 == 0:
             print('Iteration {}'.format(t))
             plt.axis('off')
+            print('Losses: ', closs.item(), sloss.item(), loss.item())
             rescaled_img = c_inv_transform(new_img.data.cpu())
             plt.imshow(rescaled_img)
             plt.show()
         '''
     print('after trannsfer', new_img.size()) 
+
     rescaled_img = c_inv_transform(new_img.data.cpu())
     '''
     print('Iteration {}'.format(t))
     plt.axis('off')
+    print('Losses: ', closs.item(), sloss.item(), loss.item())
     plt.imshow(rescaled_img)
     plt.show()
 
@@ -136,5 +138,4 @@ def style_transfer(content_img, style_img, style_layers, content_layer, content_
     plt.show()
     '''
     return rescaled_img
-            
             
