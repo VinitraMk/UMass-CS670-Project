@@ -67,10 +67,10 @@ def style_transfer(content_img, style_img, style_layers, content_layer, content_
 
     style_img = style_img.type(dtype) #read_image('./data/Textures/tree-bark.jpg').type(dtype)
     content_img = content_img.type(dtype) #read_image('./data/Mini-Set/butterfly-image.jpg').type(dtype)
-    print('img sizes', style_img.size(), content_img.size())
+    #print('img sizes', style_img.size(), content_img.size())
     c_transform, c_inv_transform = get_transforms()
-    content_img = c_transform(content_img)[None]
-    print('cs after', content_img.shape)
+    content_img = c_transform(content_img)
+    #print('cs after', content_img.shape)
     features = __get_features(content_img, model_features)
     content_trgt = features[content_layer].clone()
 
@@ -84,7 +84,7 @@ def style_transfer(content_img, style_img, style_layers, content_layer, content_
 
     new_img = content_img.clone().type(dtype)
     new_img.requires_grad_(True)
-    print('ns', new_img.shape)
+    #print('ns', new_img.shape)
     optimizer = torch.optim.Adam([new_img], lr = args.lr)
 
     losses = []
@@ -118,7 +118,6 @@ def style_transfer(content_img, style_img, style_layers, content_layer, content_
             plt.imshow(rescaled_img)
             plt.show()
         '''
-    print('after trannsfer', new_img.size()) 
 
     rescaled_img = c_inv_transform(new_img.data.cpu())
     '''

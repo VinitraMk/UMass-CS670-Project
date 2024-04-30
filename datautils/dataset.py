@@ -17,11 +17,13 @@ class COD10KDataset(Dataset):
         img_tensor = read_image(self.data_paths[idx]['image_path']).type(torch.FloatTensor)
         mask_tensor = read_image(self.data_paths[idx]['mask_path']).type(torch.FloatTensor)
         label = self.data_paths[idx]['camouflaged']
+        img_name = self.data_paths[idx]['image_name']
         
         sample = {
             'img': img_tensor,
             'mask': mask_tensor,
-            'label': label
+            'label': label,
+            'img_name': img_name
         }
         
         return sample
