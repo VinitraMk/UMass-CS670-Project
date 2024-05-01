@@ -108,7 +108,9 @@ def style_transfer(content_img, style_img, style_layers, content_layer, content_
         #print('loss grad', loss.requires_grad)
         loss.backward()
         optimizer.step()
-        
+
+    
+
         '''
         if t % 100 == 0:
             print('Iteration {}'.format(t))
@@ -120,6 +122,10 @@ def style_transfer(content_img, style_img, style_layers, content_layer, content_
         '''
 
     rescaled_img = c_inv_transform(new_img.data.cpu())
+    new_img = new_img.detach().cpu()
+    style_img = style_img.cpu()
+    content_img = content_img.cpu()
+    del style_img, content_img
     '''
     print('Iteration {}'.format(t))
     plt.axis('off')
