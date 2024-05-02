@@ -658,37 +658,50 @@ def trainer(train_loader, model, optimizer, epoch, opt, loss_func, total_step):
     if (epoch+1) % opt.save_epoch == 0:
         torch.save(model.state_dict(), save_path + 'SINet_%d.pth' % (epoch+1))
 
-
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--save_model', type=str, default='./Snapshot/2020-CVPR-SINet/')
-    parser.add_argument('--train_img_dir', type=str, default='./source-data/Train/Image/')
-    parser.add_argument('--train_gt_dir', type=str, default='./source-data/Train/GT_Object/')
-
-    parser.add_argument('--epoch', type=int, default=40,
-                        help='epoch number, default=30')
-    parser.add_argument('--lr', type=float, default=1e-4,
-                        help='init learning rate, try `lr=1e-4`')
-    parser.add_argument('--batchsize', type=int, default=36,
-                        help='training batch size (Note: ~500MB per img in GPU)')
-    parser.add_argument('--trainsize', type=int, default=352,
-                        help='the size of training image, try small resolutions for speed (like 256)')
-    parser.add_argument('--clip', type=float, default=0.5,
-                        help='gradient clipping margin')
-    parser.add_argument('--decay_rate', type=float, default=0.1,
-                        help='decay rate of learning rate per decay step')
-    parser.add_argument('--decay_epoch', type=int, default=30,
-                        help='every N epochs decay lr')
-    parser.add_argument('--gpu', type=int, default=0,
-                        help='choose which gpu you use')
-    parser.add_argument('--save_epoch', type=int, default=10,
-                        help='every N epochs save your trained snapshot')
-    opt = parser.parse_args()
-
+def run_test(opt):
+    model = SINet_ResNet50()
     if USE_CUDA:
-        torch.cuda.set_device(opt.gpu)
+        model = model.cuda()
+    model.load_state_dict(torch.load(opt.model_path))
+    model.eval()
 
+    for dataset in ['COD10K']:
+        save_path = opt.test_save + dataset + '/'
+        os.makedirs(save_path, exist_ok=True)
+        # NOTES:
+        #  if you plan to inference on your customized dataset without grouth-truth,
+        #  you just modify the params (i.e., `image_root=your_test_img_path` and `gt_root=your_test_img_path`)
+        #  with the same filepath. We recover the original size according to the shape of grouth-truth, and thus,
+        #  the grouth-truth map is unnecessary actually.
+        test_loader = test_dataset(image_root=opt.test_img_dir,
+                                gt_root=opt.test_gt_dir,
+                                testsize=opt.testsize)
+        img_count = 1
+        for iteration in range(test_loader.size):
+            # load data
+            image, gt, name = test_loader.load_data()
+            gt = np.asarray(gt, np.float32)
+            gt /= (gt.max() + 1e-8)
+            image = image.cuda()
+            # inference
+            _, cam = model(image)
+            # reshape and squeeze
+            cam = F.upsample(cam, size=gt.shape, mode='bilinear', align_corners=True)
+            cam = cam.sigmoid().data.cpu().numpy().squeeze()
+            # normalize
+            cam = (cam - cam.min()) / (cam.max() - cam.min() + 1e-8)
+            misc.imsave(save_path+name, cam)
+            # evaluate
+            mae = eval_mae(numpy2tensor(cam), numpy2tensor(gt))
+            # coarse score
+            print('[Eval-Test] Dataset: {}, Image: {} ({}/{}), MAE: {}'.format(dataset, name, img_count,
+                                                                            test_loader.size, mae))
+            img_count += 1
+
+    print("\n[Congratulations! Testing Done]")
+
+
+def run_train(opt):
     # TIPS: you also can use deeper network for better performance like channel=64
     model_SINet = SINet_ResNet18(channel=32)
     if USE_CUDA:
@@ -713,3 +726,48 @@ if __name__ == "__main__":
         trainer(train_loader=train_loader, model=model_SINet,
                 optimizer=optimizer, epoch=epoch_iter,
                 opt=opt, loss_func=LogitsBCE, total_step=total_step)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('--mode', type=str, default='train')
+    parser.add_argument('--save_model', type=str, default='./Snapshot/2020-CVPR-SINet/')
+    parser.add_argument('--train_img_dir', type=str, default='./source-data/Train/Image/')
+    parser.add_argument('--train_gt_dir', type=str, default='./source-data/Train/GT_Object/')
+    parser.add_argument('--test_img_dir', type=str, default='./source-data/Test/Image/')
+    parser.add_argument('--test_gt_dir', type=str, default='./source-data/Test/GT_Object/')
+
+    parser.add_argument('--model_path', type=str,
+                    default='./Snapshot/2020-CVPR-SINet/SINet_40.pth')
+    parser.add_argument('--test_save', type=str,
+                    default='./Result/2020-CVPR-SINet-New/')
+
+    parser.add_argument('--epoch', type=int, default=40,
+                        help='epoch number, default=30')
+    parser.add_argument('--lr', type=float, default=1e-4,
+                        help='init learning rate, try `lr=1e-4`')
+    parser.add_argument('--batchsize', type=int, default=36,
+                        help='training batch size (Note: ~500MB per img in GPU)')
+    parser.add_argument('--trainsize', type=int, default=352,
+                        help='the size of training image, try small resolutions for speed (like 256)')
+    parser.add_argument('--testsize', type=int, default=352, help='the snapshot input size')
+    parser.add_argument('--clip', type=float, default=0.5,
+                        help='gradient clipping margin')
+    parser.add_argument('--decay_rate', type=float, default=0.1,
+                        help='decay rate of learning rate per decay step')
+    parser.add_argument('--decay_epoch', type=int, default=30,
+                        help='every N epochs decay lr')
+    parser.add_argument('--gpu', type=int, default=0,
+                        help='choose which gpu you use')
+    parser.add_argument('--save_epoch', type=int, default=10,
+                        help='every N epochs save your trained snapshot')
+    opt = parser.parse_args()
+
+    if USE_CUDA:
+        torch.cuda.set_device(opt.gpu)
+
+    if opt.mode == "train":
+        run_train(opt)
+    else:
+        run_test(opt)
