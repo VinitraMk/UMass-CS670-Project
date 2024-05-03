@@ -9,6 +9,7 @@ import torch.utils.data as data
 import torchvision.transforms as transforms
 import cv2
 import numpy as np
+import imageio
 
 import torch.nn as nn
 import math
@@ -18,6 +19,7 @@ from torch.nn.parameter import Parameter
 import scipy.stats as st
 
 import torchvision.models as models
+import tqdm
 
 USE_CUDA = True
 
@@ -658,15 +660,16 @@ def trainer(train_loader, model, optimizer, epoch, opt, loss_func, total_step):
     if (epoch+1) % opt.save_epoch == 0:
         torch.save(model.state_dict(), save_path + 'SINet_%d.pth' % (epoch+1))
 
-def run_test(opt):
-    model = SINet_ResNet50()
-    if USE_CUDA:
-        model = model.cuda()
-    model.load_state_dict(torch.load(opt.model_path))
+def run_test(opt, model=None):
+    if model is None:
+        model = SINet_ResNet18()
+        if USE_CUDA:
+            model = model.cuda()
+        model.load_state_dict(torch.load(opt.model_path))
     model.eval()
 
-    for dataset in ['COD10K']:
-        save_path = opt.test_save + dataset + '/'
+    for dataset in ['COD10K', ]:
+        save_path = opt.test_save + '/'
         os.makedirs(save_path, exist_ok=True)
         # NOTES:
         #  if you plan to inference on your customized dataset without grouth-truth,
@@ -677,25 +680,30 @@ def run_test(opt):
                                 gt_root=opt.test_gt_dir,
                                 testsize=opt.testsize)
         img_count = 1
-        for iteration in range(test_loader.size):
+        for iteration in tqdm.tqdm(range(test_loader.size)):
             # load data
             image, gt, name = test_loader.load_data()
             gt = np.asarray(gt, np.float32)
             gt /= (gt.max() + 1e-8)
             image = image.cuda()
+            # print(image.min(), image.max())
             # inference
             _, cam = model(image)
             # reshape and squeeze
+            # print(cam.min(), cam.max())
             cam = F.upsample(cam, size=gt.shape, mode='bilinear', align_corners=True)
+            # print(cam.min(), cam.max())
             cam = cam.sigmoid().data.cpu().numpy().squeeze()
             # normalize
-            cam = (cam - cam.min()) / (cam.max() - cam.min() + 1e-8)
-            misc.imsave(save_path+name, cam)
+            # print(cam.min(), cam.max())
+            # cam = (cam - cam.min()) / (cam.max() - cam.min() + 1e-8)
+            # imageio.imwrite(save_path+name, cam)
+            cv2.imwrite(save_path+name, 255*(cam>0.5))
             # evaluate
             mae = eval_mae(numpy2tensor(cam), numpy2tensor(gt))
             # coarse score
-            print('[Eval-Test] Dataset: {}, Image: {} ({}/{}), MAE: {}'.format(dataset, name, img_count,
-                                                                            test_loader.size, mae))
+            # print('[Eval-Test] Dataset: {}, Image: {} ({}/{}), MAE: {}'.format(dataset, name, img_count,
+                                                                            # test_loader.size, mae))
             img_count += 1
 
     print("\n[Congratulations! Testing Done]")
@@ -741,7 +749,7 @@ if __name__ == "__main__":
     parser.add_argument('--model_path', type=str,
                     default='./Snapshot/2020-CVPR-SINet/SINet_40.pth')
     parser.add_argument('--test_save', type=str,
-                    default='./Result/2020-CVPR-SINet-New/')
+                    default='./sinet_predictions/')
 
     parser.add_argument('--epoch', type=int, default=40,
                         help='epoch number, default=30')
@@ -760,7 +768,7 @@ if __name__ == "__main__":
                         help='every N epochs decay lr')
     parser.add_argument('--gpu', type=int, default=0,
                         help='choose which gpu you use')
-    parser.add_argument('--save_epoch', type=int, default=10,
+    parser.add_argument('--save_epoch', type=int, default=5,
                         help='every N epochs save your trained snapshot')
     opt = parser.parse_args()
 
