@@ -668,16 +668,16 @@ def run_test(opt, model=None):
         model.load_state_dict(torch.load(opt.model_path))
     model.eval()
 
-    for dataset in ['COD10K', ]:
-        save_path = opt.test_save + '/'
+    for dataset in ['COD10K', 'CAMO', 'CHAMELEON']:
+        save_path = opt.test_save + '/' + dataset + "/"
         os.makedirs(save_path, exist_ok=True)
         # NOTES:
         #  if you plan to inference on your customized dataset without grouth-truth,
         #  you just modify the params (i.e., `image_root=your_test_img_path` and `gt_root=your_test_img_path`)
         #  with the same filepath. We recover the original size according to the shape of grouth-truth, and thus,
         #  the grouth-truth map is unnecessary actually.
-        test_loader = test_dataset(image_root=opt.test_img_dir,
-                                gt_root=opt.test_gt_dir,
+        test_loader = test_dataset(image_root=opt.test_img_dir.format(dataset),
+                                gt_root=opt.test_gt_dir.format(dataset),
                                 testsize=opt.testsize)
         img_count = 1
         for iteration in tqdm.tqdm(range(test_loader.size)):
@@ -717,7 +717,15 @@ def run_train(opt):
     print('-' * 30, model_SINet, '-' * 30)
 
     optimizer = torch.optim.Adam(model_SINet.parameters(), opt.lr)
-    LogitsBCE = torch.nn.BCEWithLogitsLoss()
+
+    if opt.balanced_loss:
+        pos_weight = torch.tensor([10])
+        pos_weight = pos_weight.unsqueeze(-1).unsqueeze(-1)
+        if USE_CUDA:
+            pos_weight = pos_weight.cuda()
+        LogitsBCE = torch.nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+    else:
+        LogitsBCE = torch.nn.BCEWithLogitsLoss()
 
     net, optimizer = amp.initialize(model_SINet, optimizer, opt_level='O1')     # NOTES: Ox not 0x
 
@@ -743,13 +751,15 @@ if __name__ == "__main__":
     parser.add_argument('--save_model', type=str, default='./Snapshot/2020-CVPR-SINet/')
     parser.add_argument('--train_img_dir', type=str, default='./source-data/Train/Image/')
     parser.add_argument('--train_gt_dir', type=str, default='./source-data/Train/GT_Object/')
-    parser.add_argument('--test_img_dir', type=str, default='./source-data/Test/Image/')
-    parser.add_argument('--test_gt_dir', type=str, default='./source-data/Test/GT_Object/')
+    parser.add_argument('--test_img_dir', type=str, default='./TestDataset/{}/Imgs/')
+    parser.add_argument('--test_gt_dir', type=str, default='./TestDataset/{}/GT/')
+
+    parser.add_argument('--balanced_loss', default=False, action='store_true')
 
     parser.add_argument('--model_path', type=str,
                     default='./Snapshot/2020-CVPR-SINet/SINet_40.pth')
     parser.add_argument('--test_save', type=str,
-                    default='./sinet_predictions/')
+                    default='./sinet_r18_predictions/')
 
     parser.add_argument('--epoch', type=int, default=40,
                         help='epoch number, default=30')
