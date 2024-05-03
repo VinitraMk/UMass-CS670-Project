@@ -31,5 +31,11 @@ def get_model(model_name = "resnet18", get_weights = False):
             model_id2name = weights.meta["categories"]
         else:
             model = torchvision.models.squeezenet1_1()
-            
+    elif model_name.lower() == "vit":
+        if get_weights:
+            weights = torchvision.models.ViT_B_16_Weights.IMAGENET1K_V1
+            model = torchvision.models.vit_b_16(weights = weights)
+            model_id2name = weights.meta["categories"]
+        else:
+            model = torchvision.models.vit_b_16()
     return model, model_id2name
