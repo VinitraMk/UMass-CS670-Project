@@ -696,9 +696,9 @@ def run_test(opt, model=None):
             cam = cam.sigmoid().data.cpu().numpy().squeeze()
             # normalize
             # print(cam.min(), cam.max())
-            # cam = (cam - cam.min()) / (cam.max() - cam.min() + 1e-8)
+            cam = (cam - cam.min()) / (cam.max() - cam.min() + 1e-8)
             # imageio.imwrite(save_path+name, cam)
-            cv2.imwrite(save_path+name, 255*(cam>0.5))
+            cv2.imwrite(save_path+name, 255*cam)
             # evaluate
             mae = eval_mae(numpy2tensor(cam), numpy2tensor(gt))
             # coarse score
