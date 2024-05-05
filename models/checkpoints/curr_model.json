@@ -1,1 +1,1 @@
-{"trlosshistory": [0.011565939940578772], "vallosshistory": [4.7712068899634255e-16], "valacchistory": [14.875], "last_epoch": 0}
+{"trlosshistory": [0.011565937953761537, 4.3597177673717327e-17], "vallosshistory": [4.771346385701926e-16, 2.7666452817271338e-21], "valacchistory": [14.875, 14.875], "last_epoch": 1}
