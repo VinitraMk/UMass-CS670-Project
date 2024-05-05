@@ -1,0 +1,4 @@
+data_dir: /content/drive/MyDrive/UMass-Courses/Semester-2/CS670/UMass-CS670-Project/source-data
+device: cpu
+root_dir: /content/drive/MyDrive/UMass-Courses/Semester-2/CS670/UMass-CS670-Project
+use_gpu: false
