@@ -5,7 +5,7 @@ def get_model(model_name = "resnet18", get_weights = False):
     model_id2name = {}
     if model_name.lower() == "resnet18":
         if get_weights:
-            weights = torchvision.models.ResNet18_Weights.IMAGENET1K_V2
+            weights = torchvision.models.ResNet18_Weights.IMAGENET1K_V1
             model = torchvision.models.resnet18(weights=weights)
             model_id2name = weights.meta["categories"]
         else:

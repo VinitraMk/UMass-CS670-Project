@@ -25,6 +25,7 @@ def read_data(type = 'Train', get_neg = False):
         )
     if get_neg:
         for line in neg_data_info:
+            infos = line.split(" ")
             data_paths.append(
                 {
                     "image_path": f"{image_path}/{infos[0]}",
