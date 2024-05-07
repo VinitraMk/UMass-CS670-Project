@@ -8,10 +8,11 @@ from PIL import Image
 
 class COD10KDataset(Dataset):
     
-    def __init__(self, data_paths, task_type = 'semantic_segmentation'):
+    def __init__(self, data_paths, task_type = 'semantic_segmentation', label_arr = []):
         self.data_paths = data_paths
         self.length = len(data_paths)
         self.task_type = task_type
+        self.label_arr = label_arr
         
     def __len__(self):
         return self.length
@@ -25,6 +26,13 @@ class COD10KDataset(Dataset):
         if self.task_type == 'binary_classification':
             img = np.array(Image.open(self.data_paths[idx]['image_path']))
             return img, int(label), img_name
+        elif self.task_type == 'multiclass_classification':
+            img = np.array(Image.open(self.data_paths[idx]['image_path']))
+            if 'Texture' in img_name:
+                class_lbl = img_name.split('-')[-4].lower()
+            else:
+                class_lbl = img_name.split('-')[-2].lower()
+            return img, class_lbl, img_name
         
         sample = {
             'img': img_tensor,
