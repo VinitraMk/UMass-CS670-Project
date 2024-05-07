@@ -13,27 +13,29 @@ def read_data(type = 'Train', get_neg = False):
     data_paths = []
     
     for line in pos_data_info:
-        infos = line.split(" ")
-        #print('info 0', infos[0])
-        data_paths.append(
-            {
-                "image_path": f"{image_path}/{infos[0]}",
-                "mask_path": (f"{mask_path}/{infos[0]}").replace("jpg", "png"),
-                "camouflaged": infos[1][0],
-                "image_name": infos[0]
-            }
-        )
-    if get_neg:
-        for line in neg_data_info:
+        if len(line.replace("\n", "")) > 0:
             infos = line.split(" ")
+            #print('info 0', infos[0])
             data_paths.append(
                 {
                     "image_path": f"{image_path}/{infos[0]}",
-                    "mask_path": (f"{mask_path}/{infos[0]}").replace("jpg","png"),
+                    "mask_path": (f"{mask_path}/{infos[0]}").replace("jpg", "png"),
                     "camouflaged": infos[1][0],
                     "image_name": infos[0]
                 }
             )
+    if get_neg:
+        for line in neg_data_info:
+            if len(line.replace("\n", "")) > 0:
+                infos = line.split(" ")
+                data_paths.append(
+                    {
+                        "image_path": f"{image_path}/{infos[0]}",
+                        "mask_path": (f"{mask_path}/{infos[0]}").replace("jpg","png"),
+                        "camouflaged": infos[1][0],
+                        "image_name": infos[0]
+                    }
+                )
     
     return data_paths
         
