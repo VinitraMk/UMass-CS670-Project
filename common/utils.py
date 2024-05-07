@@ -189,3 +189,19 @@ def get_transforms(crop_size = 1000, rs_size = 256):
         ])
 
     return transform, inv_transform
+
+def get_labels(filepath, label_arr, label_dict):
+    li = len(label_arr) - 1
+    with open(filepath, 'r') as fp:
+        data_paths = fp.readlines()
+        for line in data_paths:
+            fn = line.split(' ')[0]
+            info = fn.split('-')
+            if info[-2].lower() not in label_arr:
+                li += 1
+                label_dict.append({
+                    'name': info[-2].lower(),
+                    'label_index': li
+                })
+                label_arr.append(info[-2].lower())
+    return label_arr, label_dict
