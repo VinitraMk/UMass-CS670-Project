@@ -70,6 +70,7 @@ class Classification:
         train_losses = []
         val_losses = []
         val_accs = []
+        best_val_loss = 9999
         if model_info != None:
             last_epoch = model_info['last_epoch']
             train_losses, val_losses, val_accs = model_info['trlosshistory'], model_info['vallosshistory'], model_info['valacchistory']
@@ -88,8 +89,6 @@ class Classification:
                 target = torch.zeros((len(batch[1]), 2))
                 target[lbls == 1, 1] = 1.0
                 target[lbls == 0, 0] = 1.0
-                #print(target.size())
-                #print(target)
                 optimizer.zero_grad()
                 #print(len(batch), type(batch[0]), len(batch[0]))
                 img_batch = list(map(transform, batch[0]))
@@ -137,7 +136,10 @@ class Classification:
                 'valacchistory': val_accs,
                 'last_epoch': epoch_i
             }
-            save_experiment_output(model, chkpt_info)
+            if val_loss < best_val_loss:
+                save_experiment_output(model, chkpt_info, True, True)
+            else:
+                save_experiment_output(model, chkpt_info)
             save_model_helpers(optimizer.state_dict())
         save_experiment_output(model, chkpt_info, False)
         save_model_helpers(optimizer.state_dict(), False)
@@ -191,12 +193,12 @@ class Classification:
         fulllen = len(full_dataset)
         smlen = len(smftr_dataset)
         idxs = list(range(fulllen))
+        shuffle(idxs)
         vlen = int(0.2 * fulllen)
         val_idxs = idxs[:vlen]
         tr_idxs = idxs[vlen:]
         train_dataset = Subset(full_dataset, tr_idxs)
         val_dataset = Subset(full_dataset, val_idxs)
-        #train_dataloader = DataLoader(train_dataset, batch_size = args.batch_size, shuffle = False, collate_fn = image_collate)
         train_dataloader = DataLoader(train_dataset, batch_size = args.batch_size, shuffle = False, collate_fn = self.__image_collate)
         val_dataloader = DataLoader(val_dataset, batch_size = args.batch_size, shuffle = False, collate_fn = self.__image_collate)
         model = get_model(2, args.model_name)
@@ -208,7 +210,7 @@ class Classification:
         self.__run_train_loop(args, model, optimizer, model_info, train_dataloader, val_dataloader, vlen)
     
         #model.load_state_dict(torch.load('./models/checkpoints/last_model.pt'))
-        #print('\n\n')
+        print('\n\n')
         self.__run_test_loop(args, model)
         
     
