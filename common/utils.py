@@ -45,12 +45,12 @@ def dump_yaml(ypath, datadict):
 def init_config():
     root_dir = os.getcwd()
     data_dir = os.path.join(root_dir, 'source-data')
-    #op_dir = os.path.join(root_dir, 'output')
+    op_dir = os.path.join(root_dir, 'output')
     config_path = os.path.join(root_dir, 'config.yaml')
     config_params = read_yaml(config_path)
     config_params['root_dir'] = root_dir
     config_params['data_dir'] = data_dir
-    #config_params['output_dir'] = op_dir
+    config_params['output_dir'] = op_dir
     config_params['use_gpu'] = torch.cuda.is_available()
     device = "cpu"
     if torch.cuda.is_available():

@@ -199,7 +199,6 @@ class Classification:
         tr_idxs = idxs[vlen:]
         train_dataset = Subset(full_dataset, tr_idxs)
         val_dataset = Subset(full_dataset, val_idxs)
-        #train_dataloader = DataLoader(train_dataset, batch_size = args.batch_size, shuffle = False, collate_fn = image_collate)
         train_dataloader = DataLoader(train_dataset, batch_size = args.batch_size, shuffle = False, collate_fn = self.__image_collate)
         val_dataloader = DataLoader(val_dataset, batch_size = args.batch_size, shuffle = False, collate_fn = self.__image_collate)
         model = get_model(2, args.model_name)

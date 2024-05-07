@@ -166,3 +166,4 @@ cython_debug/
 /source-data
 *.zip
 /source-data/**/Styled-Image
+/models/best_models
