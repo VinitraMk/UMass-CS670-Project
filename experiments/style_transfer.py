@@ -5,6 +5,11 @@ import matplotlib.pyplot as plt
 from skimage import io
 from torchvision.io import read_image
 from common.utils import convert_to_grascale, get_transforms
+import json
+from datautils.datareader import read_data
+from datautils.dataset import COD10KDataset
+from torch.utils.data import DataLoader
+from torchvision.utils import save_image
 
 def __get_gram_matrix(features):
     n,c,h,w = features.size()
@@ -144,3 +149,42 @@ def style_transfer(content_img, style_img, style_layers, content_layer, content_
     '''
     return rescaled_img
             
+def run_style_transfer_pipeline(args, texture_name, style_weight, last_batch_run = -1):
+    pos_data_paths = read_data('Train')
+
+    dataset = COD10KDataset(pos_data_paths)
+
+    dataloader = DataLoader(dataset, batch_size = args.batch_size, shuffle = False)
+
+    for i_batch, batch in enumerate(dataloader):
+        if i_batch > last_batch_run:
+            print(f"Processing batch {i_batch}, image: {batch['img_name']} of dimensions: {batch['img'].shape}")
+            style_img = read_image(f'./source-data/Textures/{texture_name}.jpg')
+            new_img = style_transfer(
+                batch['img'],
+                style_img,
+                [0, 2, 5, 14, 23],
+                21,
+                1e-4,
+                [style_weight]*5,
+                1e-5,
+                args)
+            img_name = batch['img_name'][0]
+            img_name = img_name.replace(".jpg", "")
+            img_name = f"./source-data/Train/Styled-Image/{img_name}-Texture-{texture_name}.jpg"
+            save_image(new_img, img_name)
+            last_run = {
+                "last_batch": i_batch
+            }
+            print(f"completing transfer of img {i_batch} with texture {texture_name}")
+            with open("./last_run_info.json", "w") as fp:
+                json.dump(last_run, fp)
+
+    print(f'Finished modifying train dataset images for {texture_name}')
+    last_run = {
+        "last_batch": -1
+    }
+    with open("./last_run_info.json", "w") as fp:
+        json.dump(last_run, fp)
+    return -1
+

@@ -87,7 +87,7 @@ def get_error(y_pred, y_true):
     c = torch.sum(y_pred != y_true)
     return c / len(y_true)
 
-def save_model_chkpt(model, chkpt_info, is_checkpoint = True):
+def save_model_chkpt(model, chkpt_info, is_checkpoint = True, is_best = False):
     config_params = get_config()
     chkpt_filename = ''
     if is_checkpoint:
@@ -107,6 +107,9 @@ def save_model_chkpt(model, chkpt_info, is_checkpoint = True):
     )
     with open(jpath, 'w') as fp:
         json.dump(chkpt_info, fp)
+    if is_best:
+        mpath = os.path.join(fpath, 'best_model.pt')
+        torch.save(model.state_dict(), mpath)
         
 def load_model(model_path):
     config_params = get_config()
@@ -129,14 +132,14 @@ def get_model_filename(model_name):
     fname = f'{model_name}_{nowstr}'
     return fname
 
-def save_experiment_output(model, chkpt_info, is_chkpoint = True):
+def save_experiment_output(model, chkpt_info, is_chkpoint = True, is_best = False):
     model_info = {
         'trlosshistory': chkpt_info['trlosshistory'],
         'vallosshistory': chkpt_info['vallosshistory'],
         'valacchistory': chkpt_info['valacchistory'],
         'last_epoch': chkpt_info['last_epoch']
     }
-    save_model_chkpt(model, model_info, is_chkpoint)
+    save_model_chkpt(model, model_info, is_chkpoint, is_best)
 
 
 def get_saved_model(model, model_filename, is_chkpt = True):
