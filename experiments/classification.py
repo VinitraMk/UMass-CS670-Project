@@ -28,9 +28,9 @@ class Classification:
         x = (img - imin) / (imax - imin)
         return x
     
-    def __prepare_data(self, dstype = 'Train', task_type = 'binary_classification'):
+    def __prepare_data(self, dstype = 'Train'):
         data_paths = read_data(dstype, True)
-        dataset = COD10KDataset(data_paths, task_type)
+        dataset = COD10KDataset(data_paths, 'binary_classification')
         smlen = int(0.1 * len(dataset))
         ridxs = random.sample(range(len(dataset)), smlen)
         smftr_dataset = Subset(dataset, ridxs)
@@ -212,5 +212,5 @@ class Classification:
         #model.load_state_dict(torch.load('./models/checkpoints/last_model.pt'))
         print('\n\n')
         self.__run_test_loop(args, model)
-        
+    
     
