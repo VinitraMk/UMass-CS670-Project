@@ -13,6 +13,7 @@ class SemSegMetrics():
 
     def update(self, pred, gt):
         self.count += 1
+        pred = pred[:gt.shape[0], :gt.shape[1]]
         self.metrics["pixel_acc"] += (pred == gt).sum()/(gt.shape[0] * gt.shape[1])
         self.metrics["dice"] += 2 * (pred * gt).sum()/(pred.sum() + gt.sum())
         self.metrics["miou"] += (pred * gt).sum()/((pred + gt)>0).sum()
@@ -38,6 +39,7 @@ def eval_segmentation(result_folder, gt_folder):
         pred = cv2.imread(pred_path, 0)
         gt   = cv2.imread(gt_path, 0)
         metrics.update(pred>0, gt>0)
-
+    print('\n\n')
     print(metrics)
     return metrics
+
