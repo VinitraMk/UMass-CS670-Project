@@ -152,10 +152,11 @@ def convert_to_grascale(img):
     x = (img - imin) / (imax - imin)
     return x
 
+
 def get_transforms(crop_size = 1000, rs_size = 256):
     transform = transforms.Compose([
-        transforms.CenterCrop(crop_size),
-        transforms.Resize(rs_size),
+        #transforms.CenterCrop(crop_size),
+        #transforms.Resize(rs_size),
         transforms.Lambda(convert_to_grascale),
         transforms.Normalize(mean=[0.485, 0.456, 0.406],
             std=[0.229, 0.224, 0.225])
@@ -168,7 +169,7 @@ def get_transforms(crop_size = 1000, rs_size = 256):
         transforms.Normalize(mean = [ -0.485, -0.456, -0.406 ],
             std = [ 1., 1., 1. ]),
         transforms.Lambda(convert_to_grascale),
-        transforms.ToPILImage(),
+        #transforms.ToPILImage(),
         ])
 
     return transform, inv_transform

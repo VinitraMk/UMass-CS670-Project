@@ -1,9 +1,9 @@
 def read_data(type = 'Train', get_neg = False):
-    image_path = f'data/COD10K-v3/{type}/Image'
-    mask_path = f'data/COD10K-v3/{type}/GT_Object'
-    edge_path = f'data/COD10K-v3/{type}/GT_Edge'
-    pos_info_path = f'data/COD10K-v3/Info/CAM_{type.lower()}.txt'
-    neg_info_path = f'data/COD10K-v3/Info/NonCAM_{type.lower()}.txt'
+    image_path = f'source-data/{type}/Image'
+    mask_path = f'source-data/{type}/GT_Object'
+    edge_path = f'source-data/{type}/GT_Edge'
+    pos_info_path = f'source-data/Info/CAM_{type.lower()}.txt'
+    neg_info_path = f'source-data/Info/NonCAM_{type.lower()}.txt'
     
     with open(pos_info_path, 'r') as fp:
         pos_data_info = fp.readlines()
@@ -14,11 +14,13 @@ def read_data(type = 'Train', get_neg = False):
     
     for line in pos_data_info:
         infos = line.split(" ")
+        #print('info 0', infos[0])
         data_paths.append(
             {
                 "image_path": f"{image_path}/{infos[0]}",
                 "mask_path": (f"{mask_path}/{infos[0]}").replace("jpg", "png"),
-                "camouflaged": infos[1]
+                "camouflaged": infos[1],
+                "image_name": infos[0]
             }
         )
     if get_neg:
@@ -27,7 +29,8 @@ def read_data(type = 'Train', get_neg = False):
                 {
                     "image_path": f"{image_path}/{infos[0]}",
                     "mask_path": (f"{mask_path}/{infos[0]}").replace("jpg","png"),
-                    "camouflaged": infos[1]
+                    "camouflaged": infos[1],
+                    "image_name": infos[0]
                 }
             )
     

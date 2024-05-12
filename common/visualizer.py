@@ -7,8 +7,14 @@ from common.utils import get_transforms, convert_to_grascale
 def layer_visualizer(img, args):
 
     model, _ = get_model(args.model_name, True)
-    model_features = model.features
-    model_features.type(torch.FloatTensor)
+    module_names = list(model.features.named_modules())[0][1]
+    #print('model features', list(model.features.named_modules())[0][1])
+    if model.features != None:
+        model_features = model.features
+        model_features.type(torch.FloatTensor)
+    else:
+        raise("model doesn't have features attribute")
+        exit()
 
     for param in model_features.parameters():
         param.requires_grad = False
@@ -23,8 +29,10 @@ def layer_visualizer(img, args):
 
     #img = img[None]
     x = img
+    #print(list(model_features._modules.keys()))
     for i, layer in enumerate(model_features._modules.values()):
-        print(f'\nOutput from module {i}')
+        #print('layer', layer)
+        print(f'\nOutput from module {i}: {module_names[i]}')
         op = layer(x)
         x = op
         feature_map = op.squeeze(0)
