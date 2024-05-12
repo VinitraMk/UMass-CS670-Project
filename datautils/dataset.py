@@ -5,6 +5,8 @@ from torchvision.io import read_image
 import torch
 from torchvision.transforms import transforms
 from PIL import Image
+from common.utils import get_config
+import os
 
 class COD10KDataset(Dataset):
     
@@ -42,4 +44,25 @@ class COD10KDataset(Dataset):
         }
         
         return sample
-        
+
+class CamouflagedTestDataset(Dataset):
+
+    def __init__(self, dataset_name = 'cod10k'):
+        cfg = get_config()
+        dataset_path = os.path.join(cfg["data_dir"], f'TestDataset/{dataset_name.upper()}/Imgs')
+        self.data_paths = os.listdir(dataset_path)
+        self.length = len(self.data_paths)
+        self.img_par = os.path.join(cfg["data_dir"], f'TestDataset/{dataset_name.upper()}/Imgs')
+        self.gt_par =  os.path.join(cfg["data_dir"], f'TestDataset/{dataset_name.upper()}/GT')
+    
+    def __len__(self):
+        return self.length
+
+    def __getitem__(self, idx):
+        img_path = os.path.join(self.img_par, self.data_paths[idx])
+        mask_path = os.path.join(self.gt_par, self.data_paths[idx]).replace("jpg", "png")
+        img = np.array(Image.open(img_path))
+        mask_tensor = read_image(mask_path).type(torch.FloatTensor)
+        return img, mask_tensor, self.data_paths[idx]
+
+

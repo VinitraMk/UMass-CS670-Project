@@ -1,7 +1,7 @@
 from models.custom_models import get_model
 from common.utils import load_model, init_config
 from datautils.datareader import read_data
-from datautils.dataset import COD10KDataset
+from datautils.dataset import COD10KDataset, CamouflagedTestDataset
 import random
 from torch.utils.data import Subset
 from torch.utils.data import DataLoader
@@ -27,10 +27,9 @@ class SemanticSegmentation:
         mf = load_model(model_path)
         self.model.load_state_dict(mf)
         
-    def __prepare_data(self, dataset_type = 'Train'):
-        data_paths = read_data(dataset_type, True)
-        dataset = COD10KDataset(data_paths, 'binary_classification')
-        smlen = int(0.01 * len(dataset))
+    def __prepare_data(self, dataset_name = 'cod10k'):
+        dataset = CamouflagedTestDataset(dataset_name)
+        smlen = int(0.1 * len(dataset))
         #ridxs = random.sample(range(len(dataset)), smlen)
         ridxs = list(range(smlen))
         smftr_dataset = Subset(dataset, ridxs)
@@ -45,7 +44,7 @@ class SemanticSegmentation:
         x = (img - imin) / (imax - imin)
         return x
     
-    def run(self, args):
+    def run(self, args, dataset_name = 'cod10k'):
         transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Lambda(self.__convert_to_grascale),
@@ -57,7 +56,7 @@ class SemanticSegmentation:
         ])
         cfg = get_config()
         
-        test_dataset, sm_test_dataset = self.__prepare_data('Test')
+        test_dataset, sm_test_dataset = self.__prepare_data(dataset_name)
         test_loader = DataLoader(test_dataset, batch_size = 1, shuffle = False, collate_fn = self.__image_collate)
         target_layers = [self.model.model.layer4[-1]]
         grad_cam = GradCAM(model = self.model.model, target_layers = target_layers)
@@ -78,24 +77,20 @@ class SemanticSegmentation:
             cam_mask[cam_mask > 0.6] = 1
             cam_mask[cam_mask <= 0.6] = 0
             cam_mask = 1 - cam_mask
-            op_path = os.path.join(cfg['output_dir'], f'Test-SemSeg/{batch[2][0]}')
+            op_path = os.path.join(cfg['output_dir'], f'Test-SemSeg/{dataset_name.upper()}/{batch[2][0]}')
             op_path = op_path.replace("jpg", "png")
             #print(cfg['output_dir'], op_path)
+            #print(img_batch.size(), cam_mask.shape)
             plt.imsave(op_path, cam_mask, cmap='binary')
             #plt.imshow(grayscale_cam)
             #plt.show()
             #plt.imshow(cam_mask)
             #plt.show()
 
-def run_semantic_segmentation_pipeline():
-    seg = SemanticSegmentation('./models/best_models/resnet-18-full.pt', 'resnet18', 2)
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--batch_size', type = int, default = 1)
-    parser.add_argument('--model_name', type=str, default='resnet18')
-    parser.add_argument('--lr', type=float, default=0.001)
-    parser.add_argument('--max_iter', type=int, default=5)
-    parser.add_argument('--resize_size', type=int, default=336)
-    args = parser.parse_args(args=[])
-    seg.run(args)
+def run_semantic_segmentation_pipeline(args, dataset_name):
+    seg = SemanticSegmentation(args.model_path, 'resnet18', 2)
+    
+    seg.run(args, dataset_name)
     
 #run_semantic_segmentation_pipeline() 
+
