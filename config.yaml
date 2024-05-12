@@ -1,5 +1,5 @@
 data_dir: /content/drive/MyDrive/UMass-Courses/Semester-2/CS670/UMass-CS670-Project/source-data
-device: cpu
+device: cuda
 output_dir: /content/drive/MyDrive/UMass-Courses/Semester-2/CS670/UMass-CS670-Project/output
 root_dir: /content/drive/MyDrive/UMass-Courses/Semester-2/CS670/UMass-CS670-Project
-use_gpu: false
+use_gpu: true
