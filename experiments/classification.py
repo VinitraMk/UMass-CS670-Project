@@ -213,4 +213,3 @@ class Classification:
         print('\n\n')
         self.__run_test_loop(args, model)
         
-    
