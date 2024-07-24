@@ -116,15 +116,16 @@ def style_transfer(content_img, style_img, style_layers, content_layer, content_
 
     
 
-        '''
         if t % 100 == 0:
             print('Iteration {}'.format(t))
             plt.axis('off')
             print('Losses: ', closs.item(), sloss.item(), loss.item())
             rescaled_img = c_inv_transform(new_img.data.cpu())
+            #print(rescaled_img.size())
+            rescaled_img = rescaled_img.transpose(0, 2).transpose(0, 1)
+            #print(rescaled_img.size())
             plt.imshow(rescaled_img)
             plt.show()
-        '''
 
     rescaled_img = c_inv_transform(new_img.data.cpu())
     new_img = new_img.detach().cpu()
@@ -149,7 +150,9 @@ def style_transfer(content_img, style_img, style_layers, content_layer, content_
     '''
     return rescaled_img
             
-def run_style_transfer_pipeline(args, texture_name, style_weight, last_batch_run = -1):
+def run_style_transfer_pipeline(args,
+    texture_name, style_weight, last_batch_run = -1):
+    
     pos_data_paths = read_data('Train')
 
     dataset = COD10KDataset(pos_data_paths)
