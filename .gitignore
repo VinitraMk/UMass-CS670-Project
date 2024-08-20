@@ -167,3 +167,4 @@ cython_debug/
 *.zip
 /source-data/**/Styled-Image
 /models/best_models
+/models/weights/*

@@ -105,7 +105,7 @@ def style_transfer(content_img, style_img, style_layers, content_layer, content_
         closs = __content_loss(content_weight, features[content_layer], content_trgt)
         sloss = __style_loss(features, style_layers, style_grams, style_weights)
         tloss = __tv_loss(new_img, tv_weight)
-        loss = closs + (100* sloss) + tloss
+        loss = closs + (100 * sloss) + tloss
         losses.append(loss.cpu().detach().numpy())
         closses.append(closs.cpu().detach().numpy())
         tlosses.append(tloss.cpu().detach().numpy())
@@ -116,7 +116,7 @@ def style_transfer(content_img, style_img, style_layers, content_layer, content_
 
     
 
-        if t % 100 == 0:
+        if t % 20 == 0:
             print('Iteration {}'.format(t))
             plt.axis('off')
             print('Losses: ', closs.item(), sloss.item(), loss.item())

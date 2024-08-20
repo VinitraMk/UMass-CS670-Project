@@ -19,7 +19,7 @@ def layer_visualizer(img, args):
     for param in model_features.parameters():
         param.requires_grad = False
 
-    c_transform, c_inv_transform = get_transforms(args.content_size)
+    c_transform, c_inv_transform = get_transforms()
     img = c_transform(img)[None]
 
     unnormalize = transforms.Compose([
