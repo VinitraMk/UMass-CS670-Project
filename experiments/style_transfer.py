@@ -4,12 +4,24 @@ import torchvision.transforms as transforms
 import matplotlib.pyplot as plt
 from skimage import io
 from torchvision.io import read_image
-from common.utils import convert_to_grascale, get_transforms
+from common.utils import convert_to_grascale, get_transforms, get_config
 import json
 from datautils.datareader import read_data
 from datautils.dataset import COD10KDataset
 from torch.utils.data import DataLoader
 from torchvision.utils import save_image
+from segment_anything import sam_model_registry, SamAutomaticMaskGenerator, SamPredictor
+from PIL import Image
+import matplotlib.pyplot as plt
+from common.sam_utils import show_mask, show_box
+import numpy as np
+from common.closed_form_matting import closed_form_matting_with_mask
+
+
+CHECKPOINT_PATH='./models/weights/sam_vit_h_4b8939.pth'
+
+MODEL_TYPE = "vit_h"
+
 
 def __get_gram_matrix(features):
     n,c,h,w = features.size()
@@ -18,9 +30,22 @@ def __get_gram_matrix(features):
     G /= (h * w * c)
     return G
 
-
 def __content_loss(content_weight, curr_content, orig_content):
     return content_weight * torch.sum((curr_content - orig_content)**2)
+
+def __augmented_style_loss(features, style_layers, style_grams, style_weights):
+    if torch.cuda.is_available():
+        stloss = torch.tensor(0.0).to('cuda')
+    else:
+        stloss = torch.tensor(0.0)
+
+    for i in range(len(style_layers)):
+        stlyr = features[style_layers[i]].clone()
+        gm = __get_gram_matrix(stlyr)
+        stloss += (style_weights[i] * torch.sum((style_grams[i] - gm)**2))
+
+    return stloss
+
 
 def __style_loss(features, style_layers, style_grams, style_weights):
 
@@ -54,7 +79,45 @@ def __get_features(img, model_features):
 
     return features
 
+def __get_mask(np_img):
+
+    cfg = get_config()
+    sam = sam_model_registry[MODEL_TYPE](checkpoint=CHECKPOINT_PATH).to(device=cfg['device'])
+    mask_generator = SamAutomaticMaskGenerator(sam)
+
+    plt.imshow(np_img)
+    plt.show()
+    mask_predictor = SamPredictor(sam)
+    mask_predictor.set_image(np_img)
+    w, h, _ = np_img.shape
+    #print(image_rgb.shape)
+    
+    # Predict mask with bounding box prompt
+    bbox_prompt = np.array([0, 0, h, w])
+    masks, scores, logits = mask_predictor.predict(
+    box=bbox_prompt,
+    multimask_output=False
+    )
+    
+    # Plot the bounding box prompt and predicted mask
+    plt.imshow(np_img)
+    show_mask(masks[0], plt.gca())
+    show_box(bbox_prompt, plt.gca())
+    plt.show()
+    
+    plt.imshow(masks[0], cmap='binary')
+    plt.show()
+
+    return masks[0]
+
 def style_transfer(content_img, style_img, style_layers, content_layer, content_weight, style_weights, tv_weight, args):
+
+    np_style_img = style_img.numpy()
+    np_content_img = content_img.numpy()
+    style_mask = __get_mask(np_style_img)
+    content_mask = __get_mask(np_content_img)
+    Ms = closed_form_matting_with_mask(np_style_img, style_mask)
+    Mc = closed_form_matting_with_mask(np_content_img, content_mask)
 
     if torch.cuda.is_available():
         dtype = torch.cuda.FloatTensor
@@ -85,8 +148,11 @@ def style_transfer(content_img, style_img, style_layers, content_layer, content_
     style_grams = []
 
     for i in style_layers:
-        style_grams.append(__get_gram_matrix(features[i].clone()))
+        stg = __get_gram_matrix(features[i].clone())
+        print('style layers: ', i, stg.size())
+        style_grams.append(stg)
 
+    ''' 
     new_img = content_img.clone().type(dtype)
     new_img.requires_grad_(True)
     #print('ns', new_img.shape)
@@ -133,6 +199,8 @@ def style_transfer(content_img, style_img, style_layers, content_layer, content_
     content_img = content_img.cpu()
     del style_img, content_img
     '''
+
+    '''
     print('Iteration {}'.format(t))
     plt.axis('off')
     print('Losses: ', closs.item(), sloss.item(), loss.item())
@@ -148,7 +216,7 @@ def style_transfer(content_img, style_img, style_layers, content_layer, content_
     plt.legend(['Total loss', 'Content loss', 'Style loss', 'Total variation loss'])
     plt.show()
     '''
-    return rescaled_img
+    #return rescaled_img
             
 def run_style_transfer_pipeline(args,
     texture_name, style_weight, last_batch_run = -1):
