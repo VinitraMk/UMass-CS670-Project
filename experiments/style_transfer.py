@@ -17,6 +17,7 @@ from common.sam_utils import show_mask, show_box
 import numpy as np
 from common.closed_form_matting import closed_form_matting_with_mask
 import torch.nn.functional as F
+from skimage.transform import resize
 
 CHECKPOINT_PATH='./models/weights/sam_vit_h_4b8939.pth'
 
@@ -31,7 +32,8 @@ def __get_gram_matrix(features):
     return G
 
 def __content_loss(content_weight, curr_content, orig_content):
-    return content_weight * torch.sum((curr_content - orig_content)**2)
+    return content_weight * F.mse_loss(curr_content, orig_content)
+    #return content_weight * torch.sum((curr_content - orig_content)**2)
 
 def __augmented_style_loss(features, style_layers, style_grams, style_weights, content_mask):
     cfg = get_config()
@@ -46,12 +48,15 @@ def __augmented_style_loss(features, style_layers, style_grams, style_weights, c
         stlyr = features[style_layers[i]].clone()
         stlyr = stlyr * scaled_mask
         gm = __get_gram_matrix(stlyr)
-        N = torch.numel(gm)
+        N = torch.numel(gm) ** 2
         #print(type(N))
         #stloss += (style_weights[i] * torch.sum((style_grams[i] - gm)**2))a
         #print(style_grams[i].size(), gm.size())
-        stloss += (0.5 * (1 / N) * (torch.sum((gm - style_grams[i])**2, (1, 2))))[0]
-        scaled_mask = F.interpolate(scaled_mask, scale_factor = 0.5, mode = 'bilinear', antialias = False)
+        tmploss = F.mse_loss(gm, style_grams[i])
+        #stloss += (0.5 * (1 / N) * (torch.sum((gm - style_grams[i])**2, (1, 2))))[0]
+        #print('tmploss', tmploss)
+        stloss += 0.5 * (1 / N) * tmploss
+        scaled_mask = F.interpolate(scaled_mask, scale_factor = 0.5, mode = 'nearest', antialias = False)
 
     return stloss
 
@@ -66,7 +71,8 @@ def __style_loss(features, style_layers, style_grams, style_weights):
     for i in range(len(style_layers)):
         stlyr = features[style_layers[i]].clone()
         gm = __get_gram_matrix(stlyr)
-        stloss += (style_weights[i] * torch.sum((style_grams[i] - gm)**2))
+        #stloss += (style_weights[i] * torch.sum((style_grams[i] - gm)**2))
+        stloss += F.mse_loss(gm, style_grams[i])
 
     return stloss
 
@@ -88,7 +94,7 @@ def __get_features(img, model_features):
 
     return features
 
-def __get_mask(np_img):
+def __get_mask(np_img, fn):
 
     cfg = get_config()
     sam = sam_model_registry[MODEL_TYPE](checkpoint=CHECKPOINT_PATH).to(device=cfg['device'])
@@ -115,8 +121,9 @@ def __get_mask(np_img):
     #show_box(bbox_prompt, plt.gca())
     #plt.show()
 
-    plt.imshow(masks[0], cmap='binary')
-    plt.show()
+    #plt.imshow(masks[0], cmap='binary')
+    #plt.show()
+    plt.imsave(f'./source-data/segmentation/{fn}.png', masks[0], cmap='binary')
 
     return masks[0]
 
@@ -127,7 +134,7 @@ def __get_tensor_from_sparse_scipy(scipy_sparse_matrix):
     data = torch.tensor(scipy_sparse_matrix.data, dtype = torch.float32)
     col = torch.tensor(scipy_sparse_matrix.col, dtype = torch.long)
     row = torch.tensor(scipy_sparse_matrix.row, dtype = torch.long)
-    indices = torch.stack([row, col])
+    indices = torch.stack([row, col]).to("cpu")
 
     i = torch.LongTensor(indices)
     shape = scipy_sparse_matrix.shape
@@ -139,19 +146,36 @@ def deep_style_transfer(content_img, style_img, style_layers, content_layer, con
 
     cfg = get_config()
 
+
+    style_img = F.interpolate(style_img[None], size = 512, mode = 'bilinear', antialias = False)[0]
+    content_img = F.interpolate(content_img[None], size = 512, mode = 'bilinear', antialias = False)[0]
+
+    og_content_img = content_img# / 255.0
+    og_style_img = style_img #/ 255.0
+
     np_style_img = style_img.transpose(0, 2).transpose(0, 1).numpy()
     np_content_img = content_img.transpose(0, 2).transpose(0, 1).numpy()
-    style_mask = __get_mask(np_style_img)
-    content_mask = __get_mask(np_content_img)
-    #Ms = closed_form_matting_with_mask(np_style_img, style_mask)
-    #Ms = __get_tensor_from_sparse_scipy(Ms)
-    Mc = closed_form_matting_with_mask(np_content_img, content_mask)
+    style_mask = __get_mask(np_style_img, 'tar').astype(float)
+    content_mask = __get_mask(np_content_img, 'in').astype(float)
+    print('masks', style_mask.min(), content_mask.max(), content_mask.min(), content_mask.max())
+    content_mask_bg = (content_mask == 1).astype(float)
+    style_mask_bg = (style_mask == 1).astype(float)
+    content_img_bg = np_content_img * np.expand_dims(content_mask_bg, 2)
+    style_img_bg = np_style_img * np.expand_dims(style_mask_bg, 2)
+    #plt.imshow(content_img_bg/255.0)
+    #plt.show()
+    #Mc = closed_form_matting_with_mask(np_content_img, content_mask)
+    Mc = closed_form_matting_with_mask(content_img_bg, content_mask)
     Mc = __get_tensor_from_sparse_scipy(Mc).to(cfg['device'])
     #print('images', np_style_img.shape, np_content_img.shape, style_mask.shape, content_mask.shape)
     #print('laplacians', Mc.size(), type(Mc))
-    style_mask = torch.from_numpy(style_mask)[None, None, :].float()
-    content_mask = torch.from_numpy(content_mask)[None, None, :].float()
-
+    #style_mask = torch.from_numpy(style_mask)[None, None, :].float()
+    #content_mask = torch.from_numpy(content_mask)[None, None, :].float()
+    style_mask_bg = torch.from_numpy(style_mask_bg)[None, None, :].float()
+    content_mask_bg = torch.from_numpy(content_mask_bg)[None, None, :].float()
+    style_img = torch.from_numpy(style_img_bg).transpose(2, 0).transpose(2, 1) #/ 255.0
+    content_img = torch.from_numpy(content_img_bg).transpose(2, 0).transpose(2, 1) #/ 255.0
+    #print('content sizes', style_img.size(), content_img.size(), og_content_img.size(), og_style_img.size())
     if torch.cuda.is_available():
         dtype = torch.cuda.FloatTensor
         device = 'cuda'
@@ -181,86 +205,97 @@ def deep_style_transfer(content_img, style_img, style_layers, content_layer, con
     #style_mask_features = __get_features()
     style_grams = []
 
-    scaled_style_mask = style_mask.to(cfg['device'])
+    scaled_style_mask = style_mask_bg.to(cfg['device'])
     #scaled_style_mask.to(cfg['device'])
     for i in style_layers:
         fm = style_features[i].clone() * scaled_style_mask
         stg = __get_gram_matrix(fm)
         #print('style layers: ', i, stg.size(), features[i].size())
         style_grams.append(stg)
-        scaled_style_mask = F.interpolate(scaled_style_mask, scale_factor = 0.5, mode = 'bilinear', antialias = False)
+        scaled_style_mask = F.interpolate(scaled_style_mask, scale_factor = 0.5, mode = 'nearest', antialias = False)
 
     new_img = content_img[None, :].clone().type(dtype)
     new_img.requires_grad_(True)
-    #print('ns', new_img.shape)
-    optimizer = torch.optim.Adam([new_img], lr = args.lr)
+    print('ns', new_img.size())
+    optimizer = torch.optim.LBFGS([new_img], lr = args.lr)
 
     losses = []
-    closses = []
-    tlosses = []
-    slosses = []
+    t = [0]
 
-    for t in range(args.max_iter):
+    while t[0] <= args.max_iter:
         #if t < (args.max_iter - 10):
-        new_img.data.clamp_(-1.5, 1.5)
-        optimizer.zero_grad()
-        features = __get_features(new_img, model_features)
-        closs = __content_loss(content_weight, features[content_layer], content_trgt)
-        #sloss = __style_loss(features, style_layers, style_grams, style_weights)
-        sloss = __augmented_style_loss(features, style_layers, style_grams, style_weights, content_mask)
-        #print('augmented style loss', sloss.size())
-        #tloss = __tv_loss(new_img, tv_weight)
-        loss = closs + (eta * sloss) #+ tloss
-        losses.append(loss.cpu().detach().numpy())
-        closses.append(closs.cpu().detach().numpy())
-        #tlosses.append(tloss.cpu().detach().numpy())
-        slosses.append(sloss.cpu().detach().numpy())
-        #print('loss grad', loss.requires_grad)
-        loss.backward()
-        optimizer.step()
+        #new_img.data.clamp_(0, 1)
+        def closure():
+            with torch.no_grad():
+                #print('ns', new_img.size())
+                new_img.clamp_(0, 1)
+            optimizer.zero_grad()
+            features = __get_features(new_img, model_features)
+            closs = __content_loss(content_weight, features[content_layer], content_trgt)
+            #sloss = eta * __style_loss(features, style_layers, style_grams, style_weights)
+            sloss = eta * __augmented_style_loss(features, style_layers, style_grams, style_weights, content_mask_bg)
+            #print('augmented style loss', sloss.size())
+            #tloss = __tv_loss(new_img, tv_weight)
+            loss = closs + sloss #+ tloss
+            loss.backward()
 
-        img_vec = new_img.reshape(-1, 3).transpose(0, 1)
-        #print('img vec', img_vec.size(), Mc.size(), img_vec.get_device(), Mc.get_device())
-        dotsum = 0
-        preg_grad = torch.zeros(img_vec.size()).T.to(cfg['device'])
-        for i in range(3):
-            im_row = img_vec[i, :][None, :]
-            grad = torch.sparse.mm(Mc, im_row.T)
-            #print('grad size', grad.size())
-            preg_grad += grad
-            dotprod = torch.einsum('ij,jk->i', img_vec, grad)
-            dotsum += dotprod[0]
-        ploss = lamda * dotsum
-        preg_grad = 2 * preg_grad
-        preg_grad = preg_grad.reshape(new_img.size())
-        #print('preg', preg_grad.size(), ploss.size(), new_img.grad.size())
-        loss += ploss
-        new_img.grad += preg_grad
+            '''
+            img_vec = new_img.reshape(-1, 3).transpose(0, 1)
+            #print('img vec', img_vec.size(), Mc.size(), img_vec.get_device(), Mc.get_device())
+            dotsum = 0
+            preg_grad = torch.zeros(img_vec.size()).T.to(cfg['device'])
+            for i in range(3):
+                im_row = img_vec[i, :][None, :]
+                grad = torch.sparse.mm(Mc, im_row.T)
+                #print('grad size', grad.size())
+                preg_grad += grad
+                dotprod = torch.einsum('ij,jk->i', im_row, grad)
+                dotsum += dotprod[0]
+            ploss = lamda * dotsum
+            preg_grad = 2 * lamda * preg_grad
+            preg_grad = preg_grad.reshape(new_img.size())
+            #print('preg', preg_grad.size(), ploss.size(), new_img.grad.size())
+            loss += ploss
+            new_img.grad += preg_grad
+            '''
+            t[0] += 1
+            if t[0] % args.iter_interval == 0:
+                print('\n\nIteration {}'.format(t))
+                plt.axis('off')
+                print('Losses: ', closs.item(), sloss.item(), loss.item())
+                #print(new_img.data.size(), t)
+                rescaled_img = c_inv_transform(new_img.data.cpu())
+                print('rs min max', rescaled_img.min(), rescaled_img.max())
+                #print('rs', rescaled_img.size())
+                rescaled_img = rescaled_img.transpose(0, 2).transpose(0, 1)
+                #print(rescaled_img.size())
+                plt.imshow(rescaled_img)
+                plt.show()
+            return loss
 
-        if t % args.iter_interval == 0:
-            print('\n\nIteration {}'.format(t))
-            plt.axis('off')
-            print('Losses: ', closs.item(), sloss.item(), loss.item())
-            #print(new_img.data.size(), t)
-            rescaled_img = c_inv_transform(new_img.data.cpu())
-            #print(rescaled_img.size())
-            rescaled_img = rescaled_img.transpose(0, 2).transpose(0, 1)
-            #print(rescaled_img.size())
-            plt.imshow(rescaled_img)
-            plt.show()
+        optimizer.step(closure)
+
+    print('ns size', new_img.data.min(), new_img.data.max())
+    with torch.no_grad():
+        new_img.clamp_(0, 1)
+    print('ns size', new_img.data.min(), new_img.data.max())
+    print('\n\nIteration {}'.format(t))
+    plt.axis('off')
+    #print('Losses: ', closs.item(), sloss.item(), loss.item())
 
     rescaled_img = c_inv_transform(new_img.data.cpu())
+    print('ns size', rescaled_img.min(), rescaled_img.max(), og_content_img.min(), og_content_img.max())
+    #print('og sizes', content_mask_bg.size(), og_content_img.size(), rescaled_img.size())
+    #print('rs', rescaled_img.size())
+    rescaled_img = (rescaled_img * content_mask_bg[0]) + (og_content_img * (1 - content_mask_bg[0]))
     rescaled_img = rescaled_img.transpose(0, 2).transpose(0, 1)
+    plt.imshow(rescaled_img)
+    plt.show()
+
     new_img = new_img.detach().cpu()
     style_img = style_img.cpu()
     content_img = content_img.cpu()
     del style_img, content_img, new_img
-
-    print('\n\nIteration {}'.format(t))
-    plt.axis('off')
-    print('Losses: ', closs.item(), sloss.item(), loss.item())
-    plt.imshow(rescaled_img)
-    plt.show()
 
     '''
     print('\n\n\n Loss plots')
@@ -284,23 +319,29 @@ def style_transfer(content_img, style_img, style_layers, content_layer, content_
         device = 'cpu'
 
     model, _ = get_model(args.model_name, True)
-    model_features = model.features
+    model_features = model.features.eval()
     model_features.type(dtype)
+
+    for layer in model_features.children():
+        if isinstance(layer, nn.ReLU):
+            layer.inplace = False
 
     for param in model_features.parameters():
         param.requires_grad = False
 
-    style_img = style_img.type(dtype) #read_image('./data/Textures/tree-bark.jpg').type(dtype)
-    content_img = content_img.type(dtype) #read_image('./data/Mini-Set/butterfly-image.jpg').type(dtype)
+    style_img = style_img.type(dtype) / 255.0 #read_image('./data/Textures/tree-bark.jpg').type(dtype)
+    content_img = content_img.type(dtype) / 255.0 #read_image('./data/Mini-Set/butterfly-image.jpg').type(dtype)
     #print('img sizes', style_img.size(), content_img.size())
+
+    style_img = F.interpolate(style_img[None], size = 512, mode = 'bilinear', antialias = False)
+    content_img = F.interpolate(content_img[None], size = 512, mode = 'bilinear', antialias = False)
+
     c_transform, c_inv_transform = get_transforms()
     content_img = c_transform(content_img)
-    #print('cs after', content_img.shape)
     features = __get_features(content_img, model_features)
     content_trgt = features[content_layer].clone()
-
     s_transform, _ = get_transforms()
-    style_img = s_transform(style_img)[None]
+    style_img = s_transform(style_img)#[None]
     features = __get_features(style_img, model_features)
     style_grams = []
 
@@ -309,7 +350,7 @@ def style_transfer(content_img, style_img, style_layers, content_layer, content_
 
     new_img = content_img.clone().type(dtype)
     new_img.requires_grad_(True)
-    #print('ns', new_img.shape)
+    print('ns', new_img.size())
     optimizer = torch.optim.Adam([new_img], lr = args.lr)
 
     losses = []
@@ -322,10 +363,11 @@ def style_transfer(content_img, style_img, style_layers, content_layer, content_
         new_img.data.clamp_(-1.5, 1.5)
         optimizer.zero_grad()
         features = __get_features(new_img, model_features)
+        #print('featrs', new_img.size(), features[content_layer].size(), content_trgt.size())
         closs = __content_loss(content_weight, features[content_layer], content_trgt)
         sloss = __style_loss(features, style_layers, style_grams, style_weights)
         tloss = __tv_loss(new_img, tv_weight)
-        loss = closs + (100* sloss) + tloss
+        loss = closs + (100* sloss) #+ tloss
         losses.append(loss.cpu().detach().numpy())
         closses.append(closs.cpu().detach().numpy())
         tlosses.append(tloss.cpu().detach().numpy())
@@ -334,30 +376,30 @@ def style_transfer(content_img, style_img, style_layers, content_layer, content_
         loss.backward()
         optimizer.step()
 
-    
-
-        '''
         if t % 100 == 0:
             print('Iteration {}'.format(t))
             plt.axis('off')
             print('Losses: ', closs.item(), sloss.item(), loss.item())
             rescaled_img = c_inv_transform(new_img.data.cpu())
+            rescaled_img = rescaled_img.transpose(0, 2).transpose(0, 1)
             plt.imshow(rescaled_img)
             plt.show()
-        '''
 
-    rescaled_img = c_inv_transform(new_img.data.cpu())
-    new_img = new_img.detach().cpu()
-    style_img = style_img.cpu()
-    content_img = content_img.cpu()
-    del style_img, content_img
-    '''
     print('Iteration {}'.format(t))
     plt.axis('off')
     print('Losses: ', closs.item(), sloss.item(), loss.item())
+    rescaled_img = c_inv_transform(new_img.data.cpu())
+    rescaled_img = rescaled_img.transpose(0, 2).transpose(0, 1)
     plt.imshow(rescaled_img)
     plt.show()
 
+    new_img = new_img.detach().cpu()
+    style_img = style_img.cpu()
+    content_img = content_img.cpu()
+    del style_img, content_img, new_img
+
+
+    '''
     print('\n\n\n Loss plots')
     plt.clf()
     plt.plot(list(range(args.max_iter)), losses, color='b')
@@ -367,7 +409,7 @@ def style_transfer(content_img, style_img, style_layers, content_layer, content_
     plt.legend(['Total loss', 'Content loss', 'Style loss', 'Total variation loss'])
     plt.show()
     '''
-    return rescaled_img
+    #return rescaled_img
 
 
 def run_style_transfer_pipeline(args,

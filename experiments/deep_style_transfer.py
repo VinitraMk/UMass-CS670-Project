@@ -29,7 +29,7 @@ loader = transforms.Compose([
 
 unloader = transforms.ToPILImage()  # reconvert into PIL image
 
-device = 'cpu'
+device = get_config()['device']
 
 CHECKPOINT_PATH='./models/weights/sam_vit_h_4b8939.pth'
 
@@ -117,7 +117,7 @@ def image_loader(image_name):
     image = Image.open(image_name)
     # fake batch dimension required to fit network's input dimensions
     image = loader(image).unsqueeze(0)
-    return image.to(device, torch.float)
+    return image#.to(device, torch.float)
 
 
 def imshow(tensor, title=None):
@@ -301,20 +301,21 @@ def run_style_transfer(cnn, normalization_mean, normalization_std,
     return input_img
 
 def main(style_filename = './source-data/Textures/red-sand.jpg', content_filename = './source-data/Mini-Set/bgm-bird-2.jpg'):
-    
-    device = get_config()['device']
 
+    #device = get_config()['device']
+    print('device', device)
     style_img = image_loader(style_filename)
     print(style_img.min(), style_img.max())
     content_img = image_loader(content_filename)
     print(content_img.min(), content_img.max())
     style_img = F.interpolate(style_img, size = 512, mode = 'bilinear', antialias = False)
     content_img = F.interpolate(content_img, size = 512, mode = 'bilinear', antialias = False)
+    og_content_img = content_img.clone()
 
-    np_style_img = style_img.transpose(0, 2).transpose(0, 1).numpy()
-    np_content_img = content_img.transpose(0, 2).transpose(0, 1).numpy()
-    style_mask = get_mask(np_style_img, 'tar').astype(float)
-    content_mask = get_mask(np_content_img, 'in').astype(float)
+    np_style_img = style_img[0].transpose(0, 2).transpose(0, 1).numpy()
+    np_content_img = content_img[0].transpose(0, 2).transpose(0, 1).numpy()
+    style_mask = get_mask(np_style_img, 'tar')#.astype(float)
+    content_mask = get_mask(np_content_img, 'in')#.astype(float)
     print('masks', style_mask.min(), content_mask.max(), content_mask.min(), content_mask.max())
     content_mask_bg = (content_mask == 1).astype(float)
     style_mask_bg = (style_mask == 1).astype(float)
@@ -333,49 +334,53 @@ def main(style_filename = './source-data/Textures/red-sand.jpg', content_filenam
     content_mask_bg = torch.from_numpy(content_mask_bg)[None, None, :].float()
     style_img = torch.from_numpy(style_img_bg).transpose(2, 0).transpose(2, 1) #/ 255.0
     content_img = torch.from_numpy(content_img_bg).transpose(2, 0).transpose(2, 1) #/ 255.0
-    
+    style_img = style_img.to(device, torch.float)[None, :]
+    content_img = content_img.to(device, torch.float)[None, :]
+
     assert style_img.size() == content_img.size(), \
         "we need to import style and content images of the same size"
-    
-    ''' 
+
+    '''
     plt.ion()
-    
+
     plt.figure()
     imshow(style_img, title='Style Image')
-    
+
     plt.figure()
     imshow(content_img, title='Content Image')
     '''
 
-    cnn = vgg19(weights=VGG19_Weights.DEFAULT).features.eval()
-    cnn_normalization_mean = torch.tensor([0.485, 0.456, 0.406])
-    cnn_normalization_std = torch.tensor([0.229, 0.224, 0.225])
-    
+    cnn = vgg19(weights=VGG19_Weights.DEFAULT).features.eval().to(device, torch.float)
+    cnn_normalization_mean = torch.tensor([0.485, 0.456, 0.406]).to(device)
+    cnn_normalization_std = torch.tensor([0.229, 0.224, 0.225]).to(device)
+
     # desired depth layers to compute style/content losses :
     # content_layers_default = ['conv_4']
     # style_layers_default = ['conv_1', 'conv_2', 'conv_3', 'conv_4', 'conv_5']
-    
+
     input_img = content_img.clone()
     # if you want to use white noise by using the following code:
     #
     # .. code-block:: python
     #
     #    input_img = torch.randn(content_img.data.size())
-    
+
     # add the original input image to the figure:
     #plt.figure()
     #imshow(input_img, title='Input Image')
-    
+
     style_weight = 1e6
     content_weight = 1e1
-    
-    output = run_style_transfer(cnn, cnn_normalization_mean, cnn_normalization_std,
-                                content_img, style_img, input_img, 60, style_weight, content_weight)
 
+    output = run_style_transfer(cnn, cnn_normalization_mean, cnn_normalization_std,
+                                content_img, style_img, input_img, 300, style_weight, content_weight)
+    
+    output = output.to("cpu")
+    output = (output * content_mask_bg) + (og_content_img[0] * (1 - content_mask_bg))
     plt.figure()
     imshow(output, title='Output Image')
-    
+
     # sphinx_gallery_thumbnail_number = 4
     plt.ioff()
     plt.show()
-    
+
