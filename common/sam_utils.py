@@ -1,5 +1,13 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from common.utils import get_config
+from segment_anything import sam_model_registry, SamAutomaticMaskGenerator, SamPredictor
+import os
+from PIL import Image
+
+CHECKPOINT_PATH='./models/weights/sam_vit_h_4b8939.pth'
+
+MODEL_TYPE = "vit_h"
 
 def show_points(coords, labels, ax, marker_size=375):
     pos_points = coords[labels == 1]
@@ -56,6 +64,47 @@ def show_all_masks(masks):
         img[m] = color_mask
     ax.imshow(img)
 
+def get_sam_mask(img, img_fn):
+
+    np_img = img.transpose(0, 2).transpose(0, 1).numpy()
+    img_path = os.path.join(f'./source-data/segmentation/{img_fn}.png')
+    print('otuside if', img_path)
+    if os.path.exists(img_path):
+        print('inside if', img_path)
+        mask = np.array(Image.open(img_path))
+        return mask[:, :, 0] / 255, np_img
+
+    cfg = get_config()
+
+    sam = sam_model_registry[MODEL_TYPE](checkpoint=CHECKPOINT_PATH).to(device=cfg['device'])
+    mask_generator = SamAutomaticMaskGenerator(sam)
+
+    #plt.imshow(np_img)
+    #plt.show()
+    mask_predictor = SamPredictor(sam)
+    mask_predictor.set_image(np_img)
+    w, h, _ = np_img.shape
+    #print(image_rgb.shape)
+
+
+    # Predict mask with bounding box prompt
+    bbox_prompt = np.array([0, 0, h, w])
+    masks, scores, logits = mask_predictor.predict(
+    box=bbox_prompt,
+    multimask_output=False
+    )
+
+    # Plot the bounding box prompt and predicted mask
+    #plt.imshow(np_img)
+    #show_mask(masks[0], plt.gca())
+    #show_box(bbox_prompt, plt.gca())
+    #plt.show()
+
+    #plt.imshow(masks[0], cmap='binary')
+    #plt.show()
+    plt.imsave(f'./source-data/segmentation/{img_fn}.png', masks[0], cmap='binary')
+
+    return masks[0], np_img
 
 
 
