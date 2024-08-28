@@ -162,6 +162,7 @@ cython_debug/
 #.idea/
 
 /models/checkpoints/*.pt
+/models/checkpoints/*.pth
 /data
 /source-data
 *.zip
