@@ -18,6 +18,7 @@ import numpy as np
 from common.closed_form_matting import closed_form_matting_with_mask
 import torch.nn.functional as F
 from skimage.transform import resize
+import torch.nn as nn
 
 CHECKPOINT_PATH='./models/weights/sam_vit_h_4b8939.pth'
 
@@ -350,7 +351,6 @@ def style_transfer(content_img, style_img, style_layers, content_layer, content_
 
     new_img = content_img.clone().type(dtype)
     new_img.requires_grad_(True)
-    print('ns', new_img.size())
     optimizer = torch.optim.Adam([new_img], lr = args.lr)
 
     losses = []
@@ -367,7 +367,7 @@ def style_transfer(content_img, style_img, style_layers, content_layer, content_
         closs = __content_loss(content_weight, features[content_layer], content_trgt)
         sloss = __style_loss(features, style_layers, style_grams, style_weights)
         tloss = __tv_loss(new_img, tv_weight)
-        loss = closs + (100* sloss) #+ tloss
+        loss = closs + (100 * sloss) + tloss
         losses.append(loss.cpu().detach().numpy())
         closses.append(closs.cpu().detach().numpy())
         tlosses.append(tloss.cpu().detach().numpy())
@@ -377,22 +377,22 @@ def style_transfer(content_img, style_img, style_layers, content_layer, content_
         optimizer.step()
 
         if t % 100 == 0:
-            print('Iteration {}'.format(t))
+            print('\n\nIteration {}'.format(t))
             plt.axis('off')
-            print('Losses: ', closs.item(), sloss.item(), loss.item())
+            #print('Losses: ', closs.item(), sloss.item(), loss.item())
             rescaled_img = c_inv_transform(new_img.data.cpu())
             rescaled_img = rescaled_img.transpose(0, 2).transpose(0, 1)
             plt.imshow(rescaled_img)
             plt.show()
 
-    print('Iteration {}'.format(t))
+    print('\n\nIteration {}'.format(t))
     plt.axis('off')
-    print('Losses: ', closs.item(), sloss.item(), loss.item())
     rescaled_img = c_inv_transform(new_img.data.cpu())
     rescaled_img = rescaled_img.transpose(0, 2).transpose(0, 1)
     plt.imshow(rescaled_img)
     plt.show()
-
+    print('\n\nContent loss: ', closs.item(), '| Style Loss: ', sloss.item(), '| Total variation loss:', loss.item())
+    
     new_img = new_img.detach().cpu()
     style_img = style_img.cpu()
     content_img = content_img.cpu()
