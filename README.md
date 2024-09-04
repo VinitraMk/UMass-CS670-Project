@@ -50,7 +50,6 @@ In order to reproduce the above result, you can run the [demo.ipynb](./demo.ipyn
 
 - Currently I am attempting to use style transfer to pop out objects that are blended in backgrounds. The idea is to choose the right texture and using segmentation, transfer style of the texture on the background such that it pops out the object.
 
-Currently attempting to 
 
 ## Results
 
