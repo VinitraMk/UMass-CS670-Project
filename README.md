@@ -33,7 +33,7 @@ The baseline model that we used in this project is the SINet model proposed in 2
 - We explored the potential of using generative AI models (stable diffusion in this case) to generate images using text prompts for datasets with the goal of generating data needed for the problem and reduce data collection and annotation effort.
 - We experimented with a few different prompts and choose to use a fixed prompt template "a photo of a ____ colored in  ____ forest with matching texture'', where we vary the color of the object and the forest (same color for the two) and we repeat this for all the animals present in the COD10K dataset. 
 
-![Synthetic data](./demo/readme_assets/synthetic-data.png)
+![Synthetic data](./demo/readme_assets/synthetic-dataset.png)
 
 In order to reproduce the above result, you can run the [demo.ipynb](https://github.com/VinitraMk/UMass-CS670-Project/blob/dev/demo.ipynb) file.
 
