@@ -162,8 +162,10 @@ cython_debug/
 #.idea/
 
 /models/checkpoints/*.pt
+/models/checkpoints/*.pth
 /data
 /source-data
 *.zip
 /source-data/**/Styled-Image
 /models/best_models
+/models/weights/*

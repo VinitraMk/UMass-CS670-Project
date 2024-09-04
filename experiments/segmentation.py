@@ -87,6 +87,10 @@ class SemanticSegmentation:
             #plt.imshow(cam_mask)
             #plt.show()
 
+def test_on_single_image(args, image_path):
+
+    
+
 def run_semantic_segmentation_pipeline(args, dataset_name):
     seg = SemanticSegmentation(args.model_path, 'resnet18', 2)
     
