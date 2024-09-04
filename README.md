@@ -49,3 +49,7 @@ In order to reproduce the above result, you can run the [demo.ipynb](./demo.ipyn
 ## Results
 
 ![Results](./demo/readme_assets/results.png)
+
+## Mock Paper
+
+You can read our final report written in a CVPR template over [here](./demo/readme_assets/project-report.pdf)
