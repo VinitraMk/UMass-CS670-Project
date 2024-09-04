@@ -35,7 +35,7 @@ The baseline model that we used in this project is the SINet model proposed in 2
 
 ![Synthetic data](./demo/readme_assets/synthetic-dataset.png)
 
-In order to reproduce the above result, you can run the [demo.ipynb](https://github.com/VinitraMk/UMass-CS670-Project/blob/dev/demo.ipynb) file.
+In order to reproduce the above result, you can run the [demo.ipynb](./demo.ipynb) file.
 
 ## Weakly supervised Object Segmentation
 
